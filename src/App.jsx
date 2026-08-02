@@ -1,8 +1,10 @@
+import Navigator from "./components/Navigator";
+
 function App() {
   return (
-    <div>
-
-    </div>
+    <>
+      <Navigator/>
+    </>
   );
 }
 
