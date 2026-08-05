@@ -1,16 +1,72 @@
-# React + Vite
+# Məhsul Axtarış Tətbiqi (React + DummyJSON API)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Açıq REST API-yə (DummyJSON) qoşulan, debounce ilə axtarış, ayrı-ayrı loading/error/empty state-ləri və infinite scroll pagination olan React tətbiqi.
 
-Currently, two official plugins are available:
+## Xüsusiyyətlər
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- 🔍 **Axtarış** — Navbar-dan debounce (400ms) ilə real-time məhsul axtarışı, dropdown nəticələri
+- ♾️ **Infinite scroll** — `IntersectionObserver` ilə aşağı sürüşdükcə avtomatik yeni məhsulların yüklənməsi
+- ⏳ **Loading state** — ayrıca `Spinner` komponenti (fullPage və inline variantları)
+- ⚠️ **Qlobal error handling** — bütün API xətaları avtomatik toast bildirişi ilə göstərilir (hər komponentdə təkrar try/catch yoxdur)
+- 📭 **Empty state** — nəticə tapılmadıqda aydın mesaj
+- 🧩 **Custom hook-lar** — `useFetch` və `useInfiniteFetch` ilə təmiz, təkrarsız kod strukturu
+- 🖼️ **Məhsul detalları** — dinamik route (`/product-details/:id`), şəkil qalereyası
 
-## React Compiler
+## İstifadə olunan texnologiyalar
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **React** (Vite)
+- **React Router DOM** — routing
+- **Axios** — API sorğuları
+- **Tailwind CSS** — stilizasiya
+- **DummyJSON API** — https://dummyjson.com
 
-## Expanding the ESLint configuration
+## Layihə strukturu
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+src/
+├── components/
+│   ├── Navbar.jsx           # Axtarış inputu + debounce + dropdown nəticələr
+│   ├── Card.jsx              # Məhsul kartı
+│   ├── Spinner.jsx           # Loading göstəricisi (size variantları ilə)
+│   ├── GlobalErrorToast.jsx  # Qlobal xəta bildirişi
+│   └── Navigator.jsx         # Route-ların idarəsi
+├── pages/
+│   ├── Products.jsx          # Əsas siyahı + infinite scroll
+│   └── ProductDetails.jsx    # Məhsul detalı
+├── hooks/
+│   ├── useFetch.js           # Tək obyekt üçün fetch hook
+│   └── useInfiniteFetch.js   # Pagination/infinite scroll hook
+├── utils/
+│   ├── axios.js               # Axios instance + error interceptor
+│   └── errorBus.js            # Qlobal error event sistemi
+└── App.jsx
+```
+
+## Quraşdırma və işə salma
+
+```bash
+# Repozitoriyanı klonla
+git clone https://github.com/username/repository.git
+cd repository
+
+# Asılılıqları quraşdır
+npm install
+
+# Dev server-i işə sal
+npm run dev
+```
+
+Tətbiq default olaraq `http://localhost:5173` ünvanında açılacaq.
+
+### Environment dəyişənləri (istəyə bağlı)
+
+```
+VITE_API_URL=https://dummyjson.com
+```
+
+## Əsas texniki qərarlar
+
+- **Debounce**: `setTimeout` + `useEffect` cleanup ilə hər hərfdə API çağırışının qarşısı alınıb.
+- **Race condition**: `useFetch`/`useInfiniteFetch` daxilində `ignore` flag-i istifadə olunub — köhnə sorğu cavabı gecikəndə yeni nəticəni əvəz etmir.
+- **Infinite scroll**: `AbortController` əvəzinə `IntersectionObserver` ilə sentinel div yanaşması seçilib; `hasMore=false` olduqda sentinel DOM-dan silinir və müşahidə dayanır.
+- **Qlobal error handling**: Axios response interceptor bütün xətaları `errorBus`-a ötürür, `GlobalErrorToast` isə istənilən komponentdən müstəqil şəkildə bildirişi göstərir.
