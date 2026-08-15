@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import axios from "axios";
 import api from "../utils/axios";
 
 const DEBOUNCE_DELAY = 400;
@@ -14,32 +15,34 @@ const Navbar = () => {
 
   useEffect(() => {
     if (!query.trim()) {
-      setResults([]);
-      setIsOpen(false);
       return;
     }
 
-    let ignore = false;
-    setLoading(true);
+    const controller = new AbortController();
 
     const timer = setTimeout(async () => {
       try {
+        setLoading(true);
         const { data } = await api.get("/products/search", {
           params: { q: query, limit: 5 },
+          signal: controller.signal,
         });
-        if (!ignore) {
-          setResults(data.products || []);
-          setIsOpen(true);
+        setResults(data.products || []);
+        setIsOpen(true);
+      } catch (err) {
+        if (!axios.isCancel(err)) {
+          console.error(err);
         }
-      } catch {
       } finally {
-        if (!ignore) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     }, DEBOUNCE_DELAY);
 
     return () => {
-      ignore = true;
       clearTimeout(timer);
+      controller.abort();
     };
   }, [query]);
 
@@ -53,8 +56,19 @@ const Navbar = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setQuery(value);
+    if (!value.trim()) {
+      setResults([]);
+      setIsOpen(false);
+      setLoading(false);
+    }
+  };
+
   const handleSelect = (id) => {
     setIsOpen(false);
+    setResults([]);
     setQuery("");
     navigate(`/product-details/${id}`);
   };
@@ -75,7 +89,7 @@ const Navbar = () => {
           type="search"
           aria-label="Məhsul axtarışı"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={handleInputChange}
           onFocus={() => query.trim() && setIsOpen(true)}
         />
 

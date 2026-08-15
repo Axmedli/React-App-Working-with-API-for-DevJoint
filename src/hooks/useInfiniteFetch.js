@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import axios from "axios";
 import api from "../utils/axios";
 
 const useInfiniteFetch = (url, limit = 12) => {
@@ -8,14 +9,24 @@ const useInfiniteFetch = (url, limit = 12) => {
   const [hasMore, setHasMore] = useState(true);
   const skipRef = useRef(0);
   const loaderRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const fetchPage = useCallback(
     async (isInitial = false) => {
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       try {
-        isInitial ? setLoading(true) : setLoadingMore(true);
+        if (isInitial) {
+          setLoading(true);
+        } else {
+          setLoadingMore(true);
+        }
 
         const { data } = await api.get(url, {
           params: { limit, skip: skipRef.current },
+          signal: controller.signal,
         });
 
         const list = data.products || data;
@@ -23,9 +34,18 @@ const useInfiniteFetch = (url, limit = 12) => {
         setItems((prev) => (isInitial ? list : [...prev, ...list]));
         skipRef.current += limit;
         setHasMore(skipRef.current < (data.total ?? skipRef.current));
-      } catch {
+      } catch (err) {
+        if (!axios.isCancel(err)) {
+          console.error(err);
+        }
       } finally {
-        isInitial ? setLoading(false) : setLoadingMore(false);
+        if (!controller.signal.aborted) {
+          if (isInitial) {
+            setLoading(false);
+          } else {
+            setLoadingMore(false);
+          }
+        }
       }
     },
     [url, limit]
@@ -33,8 +53,17 @@ const useInfiniteFetch = (url, limit = 12) => {
 
   useEffect(() => {
     skipRef.current = 0;
-    fetchPage(true);
-  }, [url]);
+
+    const loadInitial = async () => {
+      await fetchPage(true);
+    };
+
+    loadInitial();
+
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, [fetchPage]);
 
   useEffect(() => {
     if (!hasMore || loading) return;
@@ -53,6 +82,7 @@ const useInfiniteFetch = (url, limit = 12) => {
 
     return () => {
       if (current) observer.unobserve(current);
+      observer.disconnect();
     };
   }, [hasMore, loading, loadingMore, fetchPage]);
 

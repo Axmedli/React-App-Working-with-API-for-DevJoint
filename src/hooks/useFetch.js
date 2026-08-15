@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import axios from "axios";
 import api from "../utils/axios";
 
 const useFetch = (url) => {
@@ -6,22 +7,32 @@ const useFetch = (url) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let ignore = false;
+    if (!url) return;
+
+    const controller = new AbortController();
 
     const load = async () => {
       try {
         setLoading(true);
-        const res = await api.get(url);
-        if (!ignore) setData(res.data);
-      } catch {
+        const res = await api.get(url, {
+          signal: controller.signal,
+        });
+        setData(res.data);
+      } catch (err) {
+        if (!axios.isCancel(err)) {
+          console.error(err);
+        }
       } finally {
-        if (!ignore) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
 
     load();
+
     return () => {
-      ignore = true;
+      controller.abort();
     };
   }, [url]);
 
